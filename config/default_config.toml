@@ -1,0 +1,30 @@
+# GlassStat default configuration
+# Hot-reload is active: save this file to apply changes immediately (no restart needed).
+
+[general]
+poll_interval_ms = 1000
+
+[ui]
+opacity     = 0.85
+font_family = "JetBrains Mono"
+
+[colors]
+background = "#0a0a16"
+accent     = "#8b5cf6"
+text       = "#e2e8f0"
+graph_line = "#a78bfa"
+
+[widgets]
+cpu     = true
+memory  = true
+network = true
+thermal = true
+gpu     = false
+
+[scripts]
+# Custom bash commands shown in the widget (name = "shell command").
+# Hot-reloaded: add/remove entries and save to see changes live.
+kernel = "uname -r"
+uptime = "uptime -p"
+# ip = "hostname -I | awk '{print $1}'"
+# disk = "df -h / | awk 'NR==2{print $3\"/\"$2}'"
