@@ -1,0 +1,27 @@
+# Build artifacts
+build/
+.cache/
+
+# Qt generated
+*.moc
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+*.qm
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+
+# Editor junk
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.clangd/
+
+# Binaries
+glassstat
