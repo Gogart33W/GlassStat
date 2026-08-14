@@ -22,12 +22,13 @@ Window {
     flags:   Qt.FramelessWindowHint | Qt.WindowStaysOnBottomHint | Qt.Tool
     color:   "transparent"
     title:   "GlassStat"
-    visible: true
+    visible: TrayController.isWidgetVisible
 
     // ── 1. DRAG & DROP (Native Window Move) ───────────────────────────────────
     MouseArea {
         anchors.fill: parent
-        onPressed: root.startSystemMove()
+        enabled:      !TrayController.isLocked
+        onPressed:    root.startSystemMove()
     }
 
     // ── glassmorphic panel — colors driven by ConfigManager ───────────────────
@@ -151,6 +152,14 @@ Window {
                     Layout.fillWidth: true
                 }
 
+                SparklineCanvas {
+                    Layout.fillWidth: true
+                    implicitHeight:   22
+                    visible:          root.cpuExpanded && !root.miniMode
+                    historyData:      SystemMonitor.cpuHistory
+                    lineColor:        ConfigManager.accentColor
+                }
+
                 GridLayout {
                     visible: root.cpuExpanded && !root.miniMode
                     Layout.fillWidth: true
@@ -214,6 +223,14 @@ Window {
                     expanded:  root.ramExpanded && !root.miniMode
                     onToggled: root.ramExpanded = !root.ramExpanded
                     Layout.fillWidth: true
+                }
+
+                SparklineCanvas {
+                    Layout.fillWidth: true
+                    implicitHeight:   22
+                    visible:          root.ramExpanded && !root.miniMode
+                    historyData:      SystemMonitor.ramHistory
+                    lineColor:        "#06b6d4"
                 }
 
                 MetricRow {

@@ -78,7 +78,14 @@ void SystemMonitor::tick() {
         m_gpuVramTotal = g.vram_total_mib;
     }
 
+    // ── History Buffers ──────────────────────────────────────────────────────
+    m_cpuHistoryBuf.push(m_cpuTotal);
+    m_ramHistoryBuf.push(m_ramPct);
+    m_cpuHistory = m_cpuHistoryBuf.toVariantList();
+    m_ramHistory = m_ramHistoryBuf.toVariantList();
+
     emit metricsChanged();
+    emit historyChanged();
 }
 
 void SystemMonitor::setPollInterval(int ms) noexcept {
