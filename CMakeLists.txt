@@ -8,7 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ── Qt6 ───────────────────────────────────────────────────────────────────────
-find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Quick Qml Widgets)
+find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Quick Qml Widgets Svg)
 
 # Suppress QML import URI policy warning (QTP0001)
 qt_policy(SET QTP0001 NEW)
@@ -31,6 +31,11 @@ qt_add_executable(glassstat
     src/ui/TrayController.cpp
 )
 
+qt_add_resources(glassstat "app_icons"
+    PREFIX "/"
+    FILES icons/glassstat.svg
+)
+
 # ── QML module — embeds QML into binary ───────────────────────────────────────
 qt_add_qml_module(glassstat
     URI GlassStat
@@ -48,6 +53,7 @@ target_link_libraries(glassstat PRIVATE
     Qt6::Quick
     Qt6::Qml
     Qt6::Widgets
+    Qt6::Svg
 )
 
 target_compile_options(glassstat PRIVATE
@@ -57,3 +63,6 @@ target_compile_options(glassstat PRIVATE
 # ── Install ───────────────────────────────────────────────────────────────────
 install(TARGETS glassstat DESTINATION bin)
 install(DIRECTORY config/ DESTINATION share/glassstat/config)
+install(FILES packaging/glassstat.desktop DESTINATION share/applications)
+install(FILES icons/glassstat.svg DESTINATION share/icons/hicolor/scalable/apps)
+install(FILES icons/glassstat.svg DESTINATION share/pixmaps RENAME glassstat.svg)

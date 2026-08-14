@@ -18,6 +18,14 @@ TrayController::TrayController(ConfigManager* cfgManager, QObject* parent)
     createTrayIcon();
 }
 
+QIcon TrayController::appIcon() {
+    const QIcon fromResource(QStringLiteral(":/icons/glassstat.svg"));
+    if (!fromResource.isNull() && !fromResource.availableSizes().isEmpty()) {
+        return fromResource;
+    }
+    return generateAppIcon();
+}
+
 QIcon TrayController::generateAppIcon() {
     QPixmap pix(32, 32);
     pix.fill(Qt::transparent);
@@ -39,7 +47,7 @@ QIcon TrayController::generateAppIcon() {
 }
 
 void TrayController::createTrayIcon() {
-    m_trayIcon = new QSystemTrayIcon(generateAppIcon(), this);
+    m_trayIcon = new QSystemTrayIcon(appIcon(), this);
     m_trayIcon->setToolTip(QStringLiteral("GlassStat System Monitor"));
 
     m_trayMenu = new QMenu();

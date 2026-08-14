@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtCore
 import GlassStat 1.0
 
 Window {
@@ -23,6 +24,12 @@ Window {
     color:   "transparent"
     title:   "GlassStat"
     visible: TrayController.isWidgetVisible
+
+    Settings {
+        category: "window"
+        property alias winX: root.x
+        property alias winY: root.y
+    }
 
     // ── 1. DRAG & DROP (Native Window Move) ───────────────────────────────────
     MouseArea {

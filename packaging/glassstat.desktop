@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=GlassStat
+GenericName=System Monitor Widget
+Comment=Minimalist, transparent system monitor widget for Linux
+Exec=glassstat
+Icon=glassstat
+Terminal=false
+Categories=System;Monitor;Utility;
+StartupNotify=false

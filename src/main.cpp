@@ -4,14 +4,30 @@
 #include "ui/TrayController.hpp"
 
 #include <QApplication>
+#include <QDir>
+#include <QIcon>
+#include <QLockFile>
 #include <QQmlApplicationEngine>
+#include <QStandardPaths>
 #include <QtQml>
+#include <iostream>
 
 int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
     app.setOrganizationName("GlassStat");
     app.setApplicationName("GlassStat");
     app.setApplicationVersion("0.1.0");
+    app.setWindowIcon(QIcon(QStringLiteral(":/icons/glassstat.svg")));
+
+    // ── Single-instance guard ─────────────────────────────────────────────────
+    const QString lockDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+    QDir().mkpath(lockDir);
+    QLockFile instanceLock(lockDir + QStringLiteral("/glassstat.lock"));
+    instanceLock.setStaleLockTime(0);
+    if (!instanceLock.tryLock(100)) {
+        std::cerr << "[GlassStat] Already running - refusing to start a second instance.\n";
+        return 0;
+    }
 
     // ── Config (must be first — everything else reads from it) ───────────────
     auto* cfg = new gs::ConfigManager(gs::ConfigManager::findConfigPath(), &app);

@@ -39,6 +39,7 @@ signals:
 
 private:
     void createTrayIcon();
+    static QIcon appIcon();
     static QIcon generateAppIcon();
 
     ConfigManager*    m_cfgManager = nullptr;
