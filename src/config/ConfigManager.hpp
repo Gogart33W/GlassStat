@@ -2,8 +2,10 @@
 
 #include <QFileSystemWatcher>
 #include <QObject>
+#include <QTimer>
 #include <QVariantList>
 
+#include <iostream>
 #include <map>
 #include <optional>
 #include <string>
@@ -13,14 +15,14 @@ namespace gs {
 class ConfigManager : public QObject {
     Q_OBJECT
 
-    Q_PROPERTY(double       uiOpacity     READ uiOpacity     NOTIFY configChanged)
-    Q_PROPERTY(QString      bgColor       READ bgColor       NOTIFY configChanged)
-    Q_PROPERTY(QString      accentColor   READ accentColor   NOTIFY configChanged)
-    Q_PROPERTY(QString      textColor     READ textColor     NOTIFY configChanged)
-    Q_PROPERTY(QString      graphColor    READ graphColor    NOTIFY configChanged)
-    Q_PROPERTY(QString      fontFamily    READ fontFamily    NOTIFY configChanged)
+    Q_PROPERTY(double       uiOpacity      READ uiOpacity      NOTIFY configChanged)
+    Q_PROPERTY(QString      bgColor        READ bgColor        NOTIFY configChanged)
+    Q_PROPERTY(QString      accentColor    READ accentColor    NOTIFY configChanged)
+    Q_PROPERTY(QString      textColor      READ textColor      NOTIFY configChanged)
+    Q_PROPERTY(QString      graphColor     READ graphColor     NOTIFY configChanged)
+    Q_PROPERTY(QString      fontFamily     READ fontFamily     NOTIFY configChanged)
     Q_PROPERTY(int          pollIntervalMs READ pollIntervalMs NOTIFY configChanged)
-    Q_PROPERTY(QVariantList scriptDefs    READ scriptDefs    NOTIFY configChanged)
+    Q_PROPERTY(QVariantList scriptDefs     READ scriptDefs     NOTIFY configChanged)
 
 public:
     explicit ConfigManager(const QString& path, QObject* parent = nullptr);
@@ -34,6 +36,8 @@ public:
     int          pollIntervalMs() const noexcept { return m_pollMs;      }
     QVariantList scriptDefs()     const          { return m_scriptDefs;  }
 
+    Q_INVOKABLE void setPreset(const QString& name);
+
     [[nodiscard]] static QString findConfigPath();
 
 signals:
@@ -41,15 +45,17 @@ signals:
 
 private slots:
     void onFileChanged(const QString& path);
+    void processFileReload();
 
 private:
     using TomlData = std::map<std::string, std::map<std::string, std::string>>;
 
-    void             load(const QString& path);
-    static TomlData  parseToml(const QString& content);
-    void             applyData(const TomlData& data);
+    void                            load(const QString& path);
+    static std::optional<TomlData>  parseToml(const QString& content);
+    void                            applyData(const TomlData& data);
 
     QFileSystemWatcher m_watcher;
+    QTimer             m_debounceTimer;
     QString            m_configPath;
 
     double       m_opacity     = 0.85;

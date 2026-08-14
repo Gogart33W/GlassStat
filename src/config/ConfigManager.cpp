@@ -4,13 +4,17 @@
 #include <QFile>
 #include <QStandardPaths>
 #include <QTextStream>
-#include <QTimer>
+#include <iostream>
 
 namespace gs {
 
 ConfigManager::ConfigManager(const QString& path, QObject* parent)
     : QObject(parent), m_configPath(path)
 {
+    m_debounceTimer.setSingleShot(true);
+    m_debounceTimer.setInterval(250);
+    connect(&m_debounceTimer, &QTimer::timeout, this, &ConfigManager::processFileReload);
+
     if (path.isEmpty()) return;
 
     load(path);
@@ -40,38 +44,65 @@ QString ConfigManager::findConfigPath() {
     return {};
 }
 
-void ConfigManager::onFileChanged(const QString& path) {
-    // Editors that use atomic-write (delete + create) need the watcher re-armed.
-    // A short delay lets the new file appear before we re-watch and reload.
-    QTimer::singleShot(120, this, [this, path]() {
-        if (!m_watcher.files().contains(path))
-            m_watcher.addPath(path);
-        load(path);
-        emit configChanged();
-    });
+void ConfigManager::onFileChanged(const QString& /*path*/) {
+    // 250ms debounce to handle multi-write / atomic-write file save events
+    m_debounceTimer.start(250);
+}
+
+void ConfigManager::processFileReload() {
+    if (m_configPath.isEmpty()) return;
+
+    if (!m_watcher.files().contains(m_configPath) && QFile::exists(m_configPath)) {
+        m_watcher.addPath(m_configPath);
+    }
+
+    load(m_configPath);
+    emit configChanged();
 }
 
 void ConfigManager::load(const QString& path) {
     QFile f(path);
-    if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) return;
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        std::cerr << "[ConfigManager] Error: Unable to open config file at "
+                  << path.toStdString() << " (retaining current valid configuration)\n";
+        return;
+    }
 
     QTextStream in(&f);
-    applyData(parseToml(in.readAll()));
+    const QString content = in.readAll();
+    if (content.trimmed().isEmpty()) {
+        std::cerr << "[ConfigManager] Error: Config file is empty or missing content at "
+                  << path.toStdString() << " (retaining current valid configuration)\n";
+        return;
+    }
+
+    const auto dataOpt = parseToml(content);
+    if (!dataOpt.has_value()) {
+        std::cerr << "[ConfigManager] Error: TOML syntax validation failed for "
+                  << path.toStdString() << " (retaining current valid configuration)\n";
+        return;
+    }
+
+    applyData(dataOpt.value());
 }
 
-// Minimal TOML subset: [sections], key = value, # comments (inline + full-line),
-// string values in double-quotes, bare int/float/bool otherwise.
-ConfigManager::TomlData ConfigManager::parseToml(const QString& content) {
+std::optional<ConfigManager::TomlData> ConfigManager::parseToml(const QString& content) {
     TomlData data;
     std::string section;
+    int lineNumber = 0;
 
     for (const QString& rawLine : content.split(u'\n')) {
-        // Strip inline comment respecting quoted strings
+        lineNumber++;
+
+        // Strip comments
         QString line;
         bool inStr = false;
         for (const QChar ch : rawLine) {
             if (ch == u'"') inStr = !inStr;
-            if (!inStr && ch == u'#') break;
+            if (!inStr && (ch == u'#' || (ch == u'/' && line.endsWith(u'/')))) {
+                if (ch == u'/') line.chop(1);
+                break;
+            }
             line += ch;
         }
         line = line.trimmed();
@@ -80,21 +111,44 @@ ConfigManager::TomlData ConfigManager::parseToml(const QString& content) {
         // [section]
         if (line.startsWith(u'[') && line.endsWith(u']')) {
             section = line.mid(1, line.size() - 2).trimmed().toStdString();
+            if (section.empty()) {
+                std::cerr << "[ConfigManager] Syntax Error line " << lineNumber
+                          << ": Empty section header bracket\n";
+                return std::nullopt;
+            }
             continue;
         }
 
+        if (line.startsWith(u'[') && !line.endsWith(u']')) {
+            std::cerr << "[ConfigManager] Syntax Error line " << lineNumber
+                      << ": Malformed section header (missing ']'): " << line.toStdString() << "\n";
+            return std::nullopt;
+        }
+
         const int eq = line.indexOf(u'=');
-        if (eq < 0) continue;
+        if (eq < 0) {
+            std::cerr << "[ConfigManager] Syntax Error line " << lineNumber
+                      << ": Expected key = value assignment: " << line.toStdString() << "\n";
+            return std::nullopt;
+        }
 
         const std::string key = line.left(eq).trimmed().toStdString();
+        if (key.empty()) {
+            std::cerr << "[ConfigManager] Syntax Error line " << lineNumber
+                      << ": Empty key name before '=': " << line.toStdString() << "\n";
+            return std::nullopt;
+        }
+
         QString val = line.mid(eq + 1).trimmed();
 
         // Unquote strings
-        if (val.size() >= 2 && val.startsWith(u'"') && val.endsWith(u'"'))
+        if (val.size() >= 2 && val.startsWith(u'"') && val.endsWith(u'"')) {
             val = val.mid(1, val.size() - 2);
+        }
 
         data[section][key] = val.toStdString();
     }
+
     return data;
 }
 
@@ -144,6 +198,31 @@ void ConfigManager::applyData(const TomlData& d) {
             m_scriptDefs.append(entry);
         }
     }
+}
+
+void ConfigManager::setPreset(const QString& name) {
+    if (name == QStringLiteral("dark")) {
+        m_bgColor     = QStringLiteral("#0a0a16");
+        m_accentColor = QStringLiteral("#8b5cf6");
+        m_textColor   = QStringLiteral("#e2e8f0");
+        m_graphColor  = QStringLiteral("#a78bfa");
+    } else if (name == QStringLiteral("cyberpunk")) {
+        m_bgColor     = QStringLiteral("#0d0221");
+        m_accentColor = QStringLiteral("#00f6ff");
+        m_textColor   = QStringLiteral("#ffffff");
+        m_graphColor  = QStringLiteral("#00f6ff");
+    } else if (name == QStringLiteral("emerald")) {
+        m_bgColor     = QStringLiteral("#022c22");
+        m_accentColor = QStringLiteral("#10b981");
+        m_textColor   = QStringLiteral("#ecfdf5");
+        m_graphColor  = QStringLiteral("#34d399");
+    } else if (name == QStringLiteral("amber")) {
+        m_bgColor     = QStringLiteral("#1c0a00");
+        m_accentColor = QStringLiteral("#f97316");
+        m_textColor   = QStringLiteral("#fff7ed");
+        m_graphColor  = QStringLiteral("#fbbf24");
+    }
+    emit configChanged();
 }
 
 } // namespace gs
