@@ -1,13 +1,14 @@
 #include "config/ConfigManager.hpp"
 #include "core/SystemMonitor.hpp"
 #include "scripts/ScriptRunner.hpp"
+#include "ui/TrayController.hpp"
 
-#include <QGuiApplication>
+#include <QApplication>
 #include <QQmlApplicationEngine>
 #include <QtQml>
 
 int main(int argc, char* argv[]) {
-    QGuiApplication app(argc, argv);
+    QApplication app(argc, argv);
     app.setOrganizationName("GlassStat");
     app.setApplicationName("GlassStat");
     app.setApplicationVersion("0.1.0");
@@ -26,6 +27,10 @@ int main(int argc, char* argv[]) {
     runner->setScripts(cfg->scriptDefs());
     qmlRegisterSingletonInstance<gs::ScriptRunner>("GlassStat", 1, 0, "ScriptRunner", runner);
 
+    // ── System Tray Controller ────────────────────────────────────────────────
+    auto* tray = new gs::TrayController(cfg, &app);
+    qmlRegisterSingletonInstance<gs::TrayController>("GlassStat", 1, 0, "TrayController", tray);
+
     // ── Hot-reload wiring ─────────────────────────────────────────────────────
     QObject::connect(cfg, &gs::ConfigManager::configChanged, monitor,
         [cfg, monitor]() { monitor->setPollInterval(cfg->pollIntervalMs()); });
@@ -40,5 +45,5 @@ int main(int argc, char* argv[]) {
     if (engine.rootObjects().isEmpty())
         return 1;
 
-    return QGuiApplication::exec();
+    return QApplication::exec();
 }

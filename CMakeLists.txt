@@ -8,7 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ── Qt6 ───────────────────────────────────────────────────────────────────────
-find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Quick Qml)
+find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Quick Qml Widgets)
 
 # Suppress QML import URI policy warning (QTP0001)
 qt_policy(SET QTP0001 NEW)
@@ -28,15 +28,16 @@ qt_add_executable(glassstat
     src/core/SystemMonitor.cpp
     src/config/ConfigManager.cpp
     src/scripts/ScriptRunner.cpp
+    src/ui/TrayController.cpp
 )
 
-# ── QML module — embeds QML into binary; NO_RESOURCE_TARGET_SUFFIX removed
-#    (it's implicit for executable targets in Qt 6.5+) ───────────────────────
+# ── QML module — embeds QML into binary ───────────────────────────────────────
 qt_add_qml_module(glassstat
     URI GlassStat
     VERSION 1.0
     QML_FILES
         src/ui/Main.qml
+        src/ui/SparklineCanvas.qml
 )
 
 target_include_directories(glassstat PRIVATE src)
@@ -46,6 +47,7 @@ target_link_libraries(glassstat PRIVATE
     Qt6::Gui
     Qt6::Quick
     Qt6::Qml
+    Qt6::Widgets
 )
 
 target_compile_options(glassstat PRIVATE
