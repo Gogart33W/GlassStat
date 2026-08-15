@@ -28,11 +28,13 @@ void WindowManager::applyState() {
     const bool clickThrough = m_config->clickThrough();
 
     // 1. Qt Window Flags
-    Qt::WindowFlags flags = Qt::FramelessWindowHint;
+    Qt::WindowFlags flags = Qt::FramelessWindowHint | Qt::Tool;
     if (mode == QStringLiteral("desktop")) {
         flags |= Qt::WindowStaysOnBottomHint;
     } else if (mode == QStringLiteral("top")) {
         flags |= Qt::WindowStaysOnTopHint;
+    } else { // floating
+        flags |= Qt::WindowStaysOnBottomHint;
     }
 
     if (m_window->flags() != flags) {

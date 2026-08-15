@@ -169,6 +169,10 @@ void ConfigManager::applyData(const TomlData& d) {
         const double op = QString::fromStdString(*v).toDouble(&ok);
         if (ok && op > 0.0 && op <= 1.0) m_opacity = op;
     }
+    if (auto v = get("ui", "scale")) {
+        const double sc = QString::fromStdString(*v).toDouble(&ok);
+        if (ok && sc >= 0.6 && sc <= 2.5) m_uiScale = sc;
+    }
     if (auto v = get("ui", "font_family"))
         m_fontFamily = QString::fromStdString(*v);
 

@@ -16,6 +16,7 @@ class ConfigManager : public QObject {
     Q_OBJECT
 
     Q_PROPERTY(double       uiOpacity      READ uiOpacity      NOTIFY configChanged)
+    Q_PROPERTY(double       uiScale        READ uiScale        NOTIFY configChanged)
     Q_PROPERTY(QString      bgColor        READ bgColor        NOTIFY configChanged)
     Q_PROPERTY(QString      accentColor    READ accentColor    NOTIFY configChanged)
     Q_PROPERTY(QString      textColor      READ textColor      NOTIFY configChanged)
@@ -33,6 +34,7 @@ public:
     explicit ConfigManager(const QString& path, QObject* parent = nullptr);
 
     double       uiOpacity()      const noexcept { return m_opacity;      }
+    double       uiScale()        const noexcept { return m_uiScale;      }
     QString      bgColor()        const          { return m_bgColor;      }
     QString      accentColor()    const          { return m_accentColor;  }
     QString      textColor()      const          { return m_textColor;    }
@@ -75,6 +77,7 @@ private:
     QString            m_configPath;
 
     double       m_opacity      = 0.85;
+    double       m_uiScale      = 1.0;
     QString      m_bgColor      = QStringLiteral("#0a0a16");
     QString      m_accentColor  = QStringLiteral("#8b5cf6");
     QString      m_textColor    = QStringLiteral("#e2e8f0");

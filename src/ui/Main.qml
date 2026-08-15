@@ -6,8 +6,8 @@ import GlassStat 1.0
 Window {
     id: root
 
-    readonly property int padH: 20
-    readonly property int padV: 16
+    readonly property int padH: Math.round(20 * ConfigManager.uiScale)
+    readonly property int padV: Math.round(16 * ConfigManager.uiScale)
 
     // State for collapsible sections & compact mode
     property bool miniMode:        false
@@ -18,18 +18,21 @@ Window {
     property bool gpuExpanded:     true
     property bool scriptsExpanded: true
 
-    width:   300
-    height:  padV + colMain.implicitHeight
-    flags:   Qt.FramelessWindowHint | Qt.WindowStaysOnBottomHint | Qt.Tool
-    color:   "transparent"
-    title:   "GlassStat"
-    visible: TrayController.isWidgetVisible
+    width:        Math.round(300 * ConfigManager.uiScale)
+    minimumWidth: Math.round(220 * ConfigManager.uiScale)
+    maximumWidth: Math.round(600 * ConfigManager.uiScale)
+    height:       padV + colMain.implicitHeight
+    flags:        Qt.FramelessWindowHint | Qt.WindowStaysOnBottomHint | Qt.Tool
+    color:        "transparent"
+    title:        "GlassStat"
+    visible:      TrayController.isWidgetVisible
 
     Settings {
         id: appSettings
         category: "window"
         property alias winX: root.x
         property alias winY: root.y
+        property alias winWidth: root.width
         property string savedMode: ""
         property bool savedClickThrough: false
     }
@@ -59,34 +62,63 @@ Window {
         onPressed:    root.startSystemMove()
     }
 
+    // ── 1b. EDGE-DRAG RESIZE (Right Edge) ─────────────────────────────────────
+    MouseArea {
+        id: resizeRight
+        anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
+        width: 8
+        cursorShape: Qt.SizeHorCursor
+        enabled: !TrayController.isLocked
+        z: 999
+
+        property real startMouseGlobalX
+        property real startWidth
+
+        onPressed: (mouse) => {
+            var globalPos = mapToGlobal(mouse.x, mouse.y)
+            startMouseGlobalX = globalPos.x
+            startWidth = root.width
+        }
+        onPositionChanged: (mouse) => {
+            if (pressed) {
+                var globalPos = mapToGlobal(mouse.x, mouse.y)
+                var delta = globalPos.x - startMouseGlobalX
+                var minW = Math.round(220 * ConfigManager.uiScale)
+                var maxW = Math.round(600 * ConfigManager.uiScale)
+                root.width = Math.max(minW, Math.min(maxW, startWidth + delta))
+            }
+        }
+    }
+
     // ── glassmorphic panel — colors driven by ConfigManager ───────────────────
     Rectangle {
         anchors.fill: parent
         radius:       16
-        color: {
-            const c = Qt.color(ConfigManager.bgColor)
-            return Qt.rgba(c.r, c.g, c.b, ConfigManager.uiOpacity)
-        }
-        border.color: {
-            const c = Qt.color(ConfigManager.accentColor)
-            return Qt.rgba(c.r, c.g, c.b, 0.28)
-        }
+        color:        Qt.rgba(Qt.color(ConfigManager.bgColor).r,
+                              Qt.color(ConfigManager.bgColor).g,
+                              Qt.color(ConfigManager.bgColor).b,
+                              ConfigManager.uiOpacity)
+        border.color: Qt.rgba(1, 1, 1, 0.12)
         border.width: 1
 
-        // top inner glass shimmer
+        Behavior on color { ColorAnimation { duration: 300 } }
+
+        // Subtle top inner glow
         Rectangle {
-            x: 10; y: 1; height: 1
-            width:  parent.width - 20
-            radius: 1
-            color:  Qt.rgba(1, 1, 1, 0.10)
+            anchors { top: parent.top; left: parent.left; right: parent.right }
+            height: 1; radius: 16
+            color:  Qt.rgba(1, 1, 1, 0.20)
         }
 
         ColumnLayout {
             id: colMain
-            anchors { top: parent.top; left: parent.left; right: parent.right }
-            anchors.topMargin:   root.padV
-            anchors.leftMargin:  root.padH
-            anchors.rightMargin: root.padH
+            anchors {
+                left:   parent.left
+                right:  parent.right
+                top:    parent.top
+                margins: root.padH
+                topMargin: root.padV
+            }
             spacing: 12
 
             // ── HEADER ────────────────────────────────────────────────────────
@@ -108,7 +140,7 @@ Window {
                     leftPadding: 4
                     font {
                         family:        ConfigManager.fontFamily + ", Fira Mono, monospace"
-                        pixelSize:     12
+                        pixelSize:     Math.round(12 * ConfigManager.uiScale)
                         weight:        Font.Bold
                         letterSpacing: 1.8
                     }
@@ -125,7 +157,7 @@ Window {
                     Text {
                         anchors.centerIn: parent
                         text: root.miniMode ? "⤢" : "─"
-                        font { family: "monospace"; pixelSize: 10; weight: Font.Bold }
+                        font { family: "monospace"; pixelSize: Math.round(10 * ConfigManager.uiScale); weight: Font.Bold }
                         color: root.miniMode ? ConfigManager.accentColor : "#94a3b8"
                     }
                     MouseArea {
@@ -146,7 +178,7 @@ Window {
                     Text {
                         anchors.centerIn: parent
                         text: "✕"
-                        font { family: "monospace"; pixelSize: 9; weight: Font.Bold }
+                        font { family: "monospace"; pixelSize: Math.round(9 * ConfigManager.uiScale); weight: Font.Bold }
                         color: closeMouse.containsMouse ? "#ffffff" : "#fca5a5"
                     }
                     MouseArea {
@@ -202,7 +234,7 @@ Window {
                             Layout.fillWidth: true
                             Text {
                                 text: "c" + index
-                                font { family: "monospace"; pixelSize: 9 }
+                                font { family: "monospace"; pixelSize: Math.round(9 * ConfigManager.uiScale) }
                                 color: "#4a5568"
                                 Layout.minimumWidth: 16
                             }
@@ -225,7 +257,7 @@ Window {
                             }
                             Text {
                                 text: modelData.toFixed(0) + "%"
-                                font { family: "monospace"; pixelSize: 9 }
+                                font { family: "monospace"; pixelSize: Math.round(9 * ConfigManager.uiScale) }
                                 color: "#64748b"
                                 horizontalAlignment: Text.AlignRight
                                 Layout.minimumWidth: 28
@@ -297,19 +329,19 @@ Window {
                             spacing: 6
                             Text {
                                 text: modelData.name
-                                font { family: "monospace"; pixelSize: 10; weight: Font.Bold }
+                                font { family: "monospace"; pixelSize: Math.round(10 * ConfigManager.uiScale); weight: Font.Bold }
                                 color: "#cbd5e1"
                                 Layout.minimumWidth: 52
                             }
                             Text {
                                 text: "↓ " + formatSpeed(modelData.rx)
-                                font { family: "monospace"; pixelSize: 9 }
+                                font { family: "monospace"; pixelSize: Math.round(9 * ConfigManager.uiScale) }
                                 color: "#34d399"
                             }
                             Item { Layout.fillWidth: true }
                             Text {
                                 text: "↑ " + formatSpeed(modelData.tx)
-                                font { family: "monospace"; pixelSize: 9 }
+                                font { family: "monospace"; pixelSize: Math.round(9 * ConfigManager.uiScale) }
                                 color: "#60a5fa"
                             }
                         }
@@ -347,7 +379,7 @@ Window {
 
                             Text {
                                 text: modelData.name
-                                font { family: "monospace"; pixelSize: 9 }
+                                font { family: "monospace"; pixelSize: Math.round(9 * ConfigManager.uiScale) }
                                 color: "#94a3b8"
                                 Layout.maximumWidth: 64
                                 elide: Text.ElideRight
@@ -355,7 +387,7 @@ Window {
                             Item { Layout.fillWidth: true }
                             Text {
                                 text: modelData.temp.toFixed(0) + "°C"
-                                font { family: "monospace"; pixelSize: 10; weight: Font.Bold }
+                                font { family: "monospace"; pixelSize: Math.round(10 * ConfigManager.uiScale); weight: Font.Bold }
                                 color: modelData.temp < 60 ? "#34d399" : modelData.temp < 80 ? "#fbbf24" : "#f87171"
                             }
                         }
@@ -402,13 +434,13 @@ Window {
                         Layout.fillWidth: true
                         Text {
                             text: "GPU Temp"
-                            font { family: "monospace"; pixelSize: 10 }
+                            font { family: "monospace"; pixelSize: Math.round(10 * ConfigManager.uiScale) }
                             color: "#94a3b8"
                         }
                         Item { Layout.fillWidth: true }
                         Text {
                             text: SystemMonitor.gpuTemp.toFixed(1) + "°C"
-                            font { family: "monospace"; pixelSize: 11; weight: Font.Bold }
+                            font { family: "monospace"; pixelSize: Math.round(11 * ConfigManager.uiScale); weight: Font.Bold }
                             color: SystemMonitor.gpuTemp < 60 ? "#34d399"
                                  : SystemMonitor.gpuTemp < 80 ? "#fbbf24" : "#f87171"
                             Behavior on color { ColorAnimation { duration: 300 } }
@@ -444,14 +476,14 @@ Window {
                             spacing: 6
                             Text {
                                 text: modelData.name
-                                font { family: "monospace"; pixelSize: 10; weight: Font.Bold }
+                                font { family: "monospace"; pixelSize: Math.round(10 * ConfigManager.uiScale); weight: Font.Bold }
                                 color: ConfigManager.textColor
                                 Layout.minimumWidth: 56
                             }
                             Item { Layout.fillWidth: true }
                             Text {
                                 text:  modelData.output
-                                font { family: "monospace"; pixelSize: 9 }
+                                font { family: "monospace"; pixelSize: Math.round(9 * ConfigManager.uiScale) }
                                 color: modelData.exitCode === 0 ? "#34d399" : "#f87171"
                                 elide: Text.ElideLeft
                                 Layout.maximumWidth: 160
@@ -503,7 +535,7 @@ Window {
                 text: hdr.title
                 font {
                     family:    ConfigManager.fontFamily + ", Fira Mono, monospace"
-                    pixelSize: 10
+                    pixelSize: Math.round(10 * ConfigManager.uiScale)
                     weight:    Font.Bold
                 }
                 color: "#94a3b8"
@@ -513,7 +545,7 @@ Window {
 
             Text {
                 text: hdr.expanded ? "▾" : "▸"
-                font { family: "monospace"; pixelSize: 10 }
+                font { family: "monospace"; pixelSize: Math.round(10 * ConfigManager.uiScale) }
                 color: "#64748b"
             }
         }
@@ -552,7 +584,7 @@ Window {
                     text: self.label
                     font {
                         family:    ConfigManager.fontFamily + ", Fira Mono, monospace"
-                        pixelSize: 10
+                        pixelSize: Math.round(10 * ConfigManager.uiScale)
                         weight:    Font.Medium
                     }
                     color: "#94a3b8"
@@ -563,7 +595,7 @@ Window {
                 Text {
                     visible: self.collapsible
                     text: self.expanded ? "▾" : "▸"
-                    font { family: "monospace"; pixelSize: 9 }
+                    font { family: "monospace"; pixelSize: Math.round(9 * ConfigManager.uiScale) }
                     color: "#475569"
                 }
 
@@ -572,7 +604,7 @@ Window {
                 Text {
                     visible: self.detail !== ""
                     text:    self.detail
-                    font { family: "monospace"; pixelSize: 9 }
+                    font { family: "monospace"; pixelSize: Math.round(9 * ConfigManager.uiScale) }
                     color: self.detailColor
                     rightPadding: 8
                     Behavior on color { ColorAnimation { duration: 300 } }
@@ -582,7 +614,7 @@ Window {
                     text:  self.value.toFixed(1) + self.unit
                     font {
                         family:    ConfigManager.fontFamily + ", Fira Mono, monospace"
-                        pixelSize: 11
+                        pixelSize: Math.round(11 * ConfigManager.uiScale)
                         weight:    Font.Bold
                     }
                     color: self.value < 50 ? "#34d399" : self.value < 80 ? "#fbbf24" : "#f87171"
