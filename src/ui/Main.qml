@@ -36,10 +36,10 @@ Window {
 
     Connections {
         target: ConfigManager
-        function onWindowModeChanged(mode) {
+        function onWindowModeChangedByUser(mode) {
             appSettings.savedMode = mode
         }
-        function onClickThroughChanged(enabled) {
+        function onClickThroughChangedByUser(enabled) {
             appSettings.savedClickThrough = enabled
         }
     }

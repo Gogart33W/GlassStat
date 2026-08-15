@@ -177,17 +177,17 @@ void ConfigManager::applyData(const TomlData& d) {
         if (ok && ms > 0) m_pollMs = ms;
     }
 
-    // Window Mode
+    // Window Mode from file hot-reload (fromUser = false)
     if (auto v = get("window", "mode")) {
         const QString modeStr = QString::fromStdString(*v).toLower().trimmed();
-        setWindowMode(modeStr);
+        setWindowModeInternal(modeStr, false);
     }
 
-    // Click Through
+    // Click Through from file hot-reload (fromUser = false)
     if (auto v = get("window", "click_through")) {
         const std::string s = *v;
         const bool ct = (s == "true" || s == "1");
-        setClickThrough(ct);
+        setClickThroughInternal(ct, false);
     }
 
     // Validate color strings before applying
@@ -217,6 +217,14 @@ void ConfigManager::applyData(const TomlData& d) {
 }
 
 void ConfigManager::setWindowMode(const QString& rawMode) {
+    setWindowModeInternal(rawMode, true);
+}
+
+void ConfigManager::setClickThrough(bool enabled) {
+    setClickThroughInternal(enabled, true);
+}
+
+void ConfigManager::setWindowModeInternal(const QString& rawMode, bool fromUser) {
     QString targetMode = rawMode.toLower().trimmed();
     if (targetMode != QStringLiteral("desktop") &&
         targetMode != QStringLiteral("floating") &&
@@ -232,13 +240,19 @@ void ConfigManager::setWindowMode(const QString& rawMode) {
     if (m_windowMode != targetMode) {
         m_windowMode = targetMode;
         emit windowModeChanged(m_windowMode);
+        if (fromUser) {
+            emit windowModeChangedByUser(m_windowMode);
+        }
     }
 }
 
-void ConfigManager::setClickThrough(bool enabled) {
+void ConfigManager::setClickThroughInternal(bool enabled, bool fromUser) {
     if (m_clickThrough != enabled) {
         m_clickThrough = enabled;
         emit clickThroughChanged(m_clickThrough);
+        if (fromUser) {
+            emit clickThroughChangedByUser(m_clickThrough);
+        }
     }
 }
 

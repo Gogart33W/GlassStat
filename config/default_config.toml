@@ -4,6 +4,14 @@
 [general]
 poll_interval_ms = 1000
 
+[window]
+# "desktop" = pinned to the wallpaper layer, under all windows/icons (X11 only)
+# "floating" = normal frameless window, default
+# "top" = always-on-top overlay
+mode = "floating"
+# Let mouse clicks pass through to the desktop underneath (desktop mode only)
+click_through = false
+
 [ui]
 opacity     = 0.85
 font_family = "JetBrains Mono"

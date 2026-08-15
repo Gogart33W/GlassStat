@@ -54,6 +54,8 @@ signals:
     void configChanged();
     void windowModeChanged(const QString& mode);
     void clickThroughChanged(bool enabled);
+    void windowModeChangedByUser(const QString& mode);
+    void clickThroughChangedByUser(bool enabled);
 
 private slots:
     void onFileChanged(const QString& path);
@@ -65,6 +67,8 @@ private:
     void                            load(const QString& path);
     static std::optional<TomlData>  parseToml(const QString& content);
     void                            applyData(const TomlData& data);
+    void                            setWindowModeInternal(const QString& rawMode, bool fromUser);
+    void                            setClickThroughInternal(bool enabled, bool fromUser);
 
     QFileSystemWatcher m_watcher;
     QTimer             m_debounceTimer;
