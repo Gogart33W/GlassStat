@@ -26,12 +26,31 @@ Window {
     visible: TrayController.isWidgetVisible
 
     Settings {
+        id: appSettings
         category: "window"
         property alias winX: root.x
         property alias winY: root.y
+        property string savedMode: ""
+        property bool savedClickThrough: false
     }
 
-    Component.onCompleted: WindowManager.registerWindow(root)
+    Connections {
+        target: ConfigManager
+        function onWindowModeChanged(mode) {
+            appSettings.savedMode = mode
+        }
+        function onClickThroughChanged(enabled) {
+            appSettings.savedClickThrough = enabled
+        }
+    }
+
+    Component.onCompleted: {
+        WindowManager.registerWindow(root)
+        if (appSettings.savedMode !== "") {
+            ConfigManager.setWindowMode(appSettings.savedMode)
+            ConfigManager.setClickThrough(appSettings.savedClickThrough)
+        }
+    }
 
     // ── 1. DRAG & DROP (Native Window Move) ───────────────────────────────────
     MouseArea {
