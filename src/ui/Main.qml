@@ -31,6 +31,8 @@ Window {
         property alias winY: root.y
     }
 
+    Component.onCompleted: WindowManager.registerWindow(root)
+
     // ── 1. DRAG & DROP (Native Window Move) ───────────────────────────────────
     MouseArea {
         anchors.fill: parent

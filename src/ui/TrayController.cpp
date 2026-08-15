@@ -16,6 +16,13 @@ TrayController::TrayController(ConfigManager* cfgManager, QObject* parent)
     }
 
     createTrayIcon();
+
+    if (m_cfgManager) {
+        connect(m_cfgManager, &ConfigManager::windowModeChanged, this, &TrayController::updateMenuStates);
+        connect(m_cfgManager, &ConfigManager::clickThroughChanged, this, &TrayController::updateMenuStates);
+        connect(m_cfgManager, &ConfigManager::configChanged, this, &TrayController::updateMenuStates);
+        updateMenuStates();
+    }
 }
 
 QIcon TrayController::appIcon() {
@@ -62,6 +69,37 @@ void TrayController::createTrayIcon() {
 
     m_trayMenu->addSeparator();
 
+    // Window Mode Submenu
+    QMenu* modeMenu = m_trayMenu->addMenu(QStringLiteral("Window Mode"));
+    m_modeActionGroup = new QActionGroup(this);
+    m_modeActionGroup->setExclusive(true);
+
+    m_modeDesktopAction = modeMenu->addAction(QStringLiteral("Desktop Widget"), [this]() {
+        if (m_cfgManager) m_cfgManager->setWindowMode(QStringLiteral("desktop"));
+    });
+    m_modeDesktopAction->setCheckable(true);
+    m_modeActionGroup->addAction(m_modeDesktopAction);
+
+    m_modeFloatingAction = modeMenu->addAction(QStringLiteral("Normal Floating"), [this]() {
+        if (m_cfgManager) m_cfgManager->setWindowMode(QStringLiteral("floating"));
+    });
+    m_modeFloatingAction->setCheckable(true);
+    m_modeActionGroup->addAction(m_modeFloatingAction);
+
+    m_modeTopAction = modeMenu->addAction(QStringLiteral("Always on Top"), [this]() {
+        if (m_cfgManager) m_cfgManager->setWindowMode(QStringLiteral("top"));
+    });
+    m_modeTopAction->setCheckable(true);
+    m_modeActionGroup->addAction(m_modeTopAction);
+
+    // Click Through Action
+    m_clickThroughAction = m_trayMenu->addAction(QStringLiteral("Click Through"), [this](bool checked) {
+        if (m_cfgManager) m_cfgManager->setClickThrough(checked);
+    });
+    m_clickThroughAction->setCheckable(true);
+
+    m_trayMenu->addSeparator();
+
     // Themes Submenu
     QMenu* themeMenu = m_trayMenu->addMenu(QStringLiteral("Theme Preset"));
     if (m_cfgManager) {
@@ -86,7 +124,40 @@ void TrayController::createTrayIcon() {
         }
     });
 
+    updateMenuStates();
     m_trayIcon->show();
+}
+
+void TrayController::updateMenuStates() {
+    if (!m_cfgManager || !m_trayMenu) return;
+
+    const QString mode = m_cfgManager->windowMode();
+    const bool isX11 = m_cfgManager->isX11();
+
+    if (m_modeDesktopAction) {
+        m_modeDesktopAction->setChecked(mode == QStringLiteral("desktop"));
+        if (!isX11) {
+            m_modeDesktopAction->setEnabled(false);
+            m_modeDesktopAction->setToolTip(QStringLiteral("X11 only"));
+        } else {
+            m_modeDesktopAction->setEnabled(true);
+            m_modeDesktopAction->setToolTip(QString());
+        }
+    }
+
+    if (m_modeFloatingAction) {
+        m_modeFloatingAction->setChecked(mode == QStringLiteral("floating"));
+    }
+
+    if (m_modeTopAction) {
+        m_modeTopAction->setChecked(mode == QStringLiteral("top"));
+    }
+
+    if (m_clickThroughAction) {
+        const bool isDesktopMode = (mode == QStringLiteral("desktop"));
+        m_clickThroughAction->setEnabled(isDesktopMode);
+        m_clickThroughAction->setChecked(isDesktopMode && m_cfgManager->clickThrough());
+    }
 }
 
 void TrayController::setLocked(bool locked) {

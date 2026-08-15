@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QAction>
+#include <QActionGroup>
 #include <QApplication>
 #include <QIcon>
 #include <QMenu>
@@ -39,14 +40,21 @@ signals:
 
 private:
     void createTrayIcon();
+    void updateMenuStates();
     static QIcon appIcon();
     static QIcon generateAppIcon();
 
     ConfigManager*    m_cfgManager = nullptr;
     QSystemTrayIcon*  m_trayIcon   = nullptr;
     QMenu*            m_trayMenu   = nullptr;
-    QAction*          m_showHideAction = nullptr;
-    QAction*          m_lockAction     = nullptr;
+
+    QAction*          m_showHideAction     = nullptr;
+    QAction*          m_lockAction         = nullptr;
+    QAction*          m_modeDesktopAction  = nullptr;
+    QAction*          m_modeFloatingAction = nullptr;
+    QAction*          m_modeTopAction      = nullptr;
+    QAction*          m_clickThroughAction = nullptr;
+    QActionGroup*     m_modeActionGroup    = nullptr;
 
     bool m_locked        = false;
     bool m_widgetVisible = true;

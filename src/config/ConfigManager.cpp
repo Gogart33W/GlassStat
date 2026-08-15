@@ -2,6 +2,7 @@
 
 #include <QColor>
 #include <QFile>
+#include <QGuiApplication>
 #include <QStandardPaths>
 #include <QTextStream>
 #include <iostream>
@@ -11,6 +12,8 @@ namespace gs {
 ConfigManager::ConfigManager(const QString& path, QObject* parent)
     : QObject(parent), m_configPath(path)
 {
+    m_isX11 = (QGuiApplication::platformName() == QStringLiteral("xcb"));
+
     m_debounceTimer.setSingleShot(true);
     m_debounceTimer.setInterval(250);
     connect(&m_debounceTimer, &QTimer::timeout, this, &ConfigManager::processFileReload);
@@ -174,6 +177,19 @@ void ConfigManager::applyData(const TomlData& d) {
         if (ok && ms > 0) m_pollMs = ms;
     }
 
+    // Window Mode
+    if (auto v = get("window", "mode")) {
+        const QString modeStr = QString::fromStdString(*v).toLower().trimmed();
+        setWindowMode(modeStr);
+    }
+
+    // Click Through
+    if (auto v = get("window", "click_through")) {
+        const std::string s = *v;
+        const bool ct = (s == "true" || s == "1");
+        setClickThrough(ct);
+    }
+
     // Validate color strings before applying
     auto applyColor = [&](const char* key, QString& dst) {
         if (auto v = get("colors", key)) {
@@ -197,6 +213,32 @@ void ConfigManager::applyData(const TomlData& d) {
             entry[QStringLiteral("command")] = QString::fromStdString(cmd);
             m_scriptDefs.append(entry);
         }
+    }
+}
+
+void ConfigManager::setWindowMode(const QString& rawMode) {
+    QString targetMode = rawMode.toLower().trimmed();
+    if (targetMode != QStringLiteral("desktop") &&
+        targetMode != QStringLiteral("floating") &&
+        targetMode != QStringLiteral("top")) {
+        targetMode = QStringLiteral("floating");
+    }
+
+    if (targetMode == QStringLiteral("desktop") && !m_isX11) {
+        std::cerr << "[GlassStat] Desktop mode requires X11 — falling back to floating window on Wayland.\n";
+        targetMode = QStringLiteral("floating");
+    }
+
+    if (m_windowMode != targetMode) {
+        m_windowMode = targetMode;
+        emit windowModeChanged(m_windowMode);
+    }
+}
+
+void ConfigManager::setClickThrough(bool enabled) {
+    if (m_clickThrough != enabled) {
+        m_clickThrough = enabled;
+        emit clickThroughChanged(m_clickThrough);
     }
 }
 

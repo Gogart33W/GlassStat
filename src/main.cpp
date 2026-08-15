@@ -2,6 +2,7 @@
 #include "core/SystemMonitor.hpp"
 #include "scripts/ScriptRunner.hpp"
 #include "ui/TrayController.hpp"
+#include "ui/WindowManager.hpp"
 
 #include <QApplication>
 #include <QDir>
@@ -46,6 +47,10 @@ int main(int argc, char* argv[]) {
     // ── System Tray Controller ────────────────────────────────────────────────
     auto* tray = new gs::TrayController(cfg, &app);
     qmlRegisterSingletonInstance<gs::TrayController>("GlassStat", 1, 0, "TrayController", tray);
+
+    // ── Window Manager ────────────────────────────────────────────────────────
+    auto* winMgr = new gs::WindowManager(cfg, &app);
+    qmlRegisterSingletonInstance<gs::WindowManager>("GlassStat", 1, 0, "WindowManager", winMgr);
 
     // ── Hot-reload wiring ─────────────────────────────────────────────────────
     QObject::connect(cfg, &gs::ConfigManager::configChanged, monitor,

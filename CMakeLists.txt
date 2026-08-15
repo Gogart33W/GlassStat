@@ -7,8 +7,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# ── Qt6 ───────────────────────────────────────────────────────────────────────
+# ── Qt6 & XCB Dependencies ───────────────────────────────────────────────────
 find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Quick Qml Widgets Svg)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(XCB REQUIRED xcb xcb-shape)
 
 # Suppress QML import URI policy warning (QTP0001)
 qt_policy(SET QTP0001 NEW)
@@ -29,6 +31,8 @@ qt_add_executable(glassstat
     src/config/ConfigManager.cpp
     src/scripts/ScriptRunner.cpp
     src/ui/TrayController.cpp
+    src/ui/WindowManager.cpp
+    src/platform/X11WindowHelper.cpp
 )
 
 qt_add_resources(glassstat "app_icons"
@@ -45,7 +49,7 @@ qt_add_qml_module(glassstat
         src/ui/SparklineCanvas.qml
 )
 
-target_include_directories(glassstat PRIVATE src)
+target_include_directories(glassstat PRIVATE src ${XCB_INCLUDE_DIRS})
 
 target_link_libraries(glassstat PRIVATE
     Qt6::Core
@@ -54,6 +58,7 @@ target_link_libraries(glassstat PRIVATE
     Qt6::Qml
     Qt6::Widgets
     Qt6::Svg
+    ${XCB_LIBRARIES}
 )
 
 target_compile_options(glassstat PRIVATE
