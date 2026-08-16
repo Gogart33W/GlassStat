@@ -15,7 +15,7 @@ click_through = false
 [ui]
 opacity     = 0.85
 font_family = "JetBrains Mono"
-scale       = 1.0   # 0.75-2.0, scales all text and spacing
+# scale = 1.0   # Omitted = auto-computed from screen DPI (recommended). Set explicitly to override.
 
 [colors]
 background = "#0a0a16"

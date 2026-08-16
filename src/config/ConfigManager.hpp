@@ -34,7 +34,7 @@ class ConfigManager : public QObject {
     Q_PROPERTY(bool autostartEnabled READ autostartEnabled WRITE setAutostartEnabled NOTIFY autostartChanged)
 
 public:
-    explicit ConfigManager(const QString& path, QObject* parent = nullptr);
+    explicit ConfigManager(const QString& path, double autoScale = 1.0, QObject* parent = nullptr);
 
     double       uiOpacity()        const noexcept { return m_opacity;         }
     double       uiScale()          const noexcept { return m_uiScale;         }
@@ -69,8 +69,6 @@ public:
 
     [[nodiscard]] static QString findConfigPath();
 
-    // Called from main() after screen info available — sets DPI-based default
-    void setAutoScale(double dpiAutoScale) { m_autoScale = dpiAutoScale; }
 
 signals:
     void configChanged();

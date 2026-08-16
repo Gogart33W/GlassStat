@@ -15,8 +15,8 @@ namespace gs {
 
 // ── Constructor ──────────────────────────────────────────────────────────────
 
-ConfigManager::ConfigManager(const QString& path, QObject* parent)
-    : QObject(parent), m_configPath(path)
+ConfigManager::ConfigManager(const QString& path, double autoScale, QObject* parent)
+    : QObject(parent), m_configPath(path), m_autoScale(autoScale)
 {
     m_isX11 = (QGuiApplication::platformName() == QStringLiteral("xcb"));
 
@@ -384,8 +384,8 @@ void ConfigManager::setAndPersist(const QString& section, const QString& key, co
     f.close();
 
     const QString sectionHeader = u'[' + section + u']';
-    const QString keyPrefix = key + u'=';
-    const QString keyPrefixSpace = key + u" =";
+    const QString keyPrefix      = key + QStringLiteral("=");
+    const QString keyPrefixSpace = key + QStringLiteral(" =");
 
     bool inTargetSection = false;
     bool keyFound = false;
@@ -397,7 +397,7 @@ void ConfigManager::setAndPersist(const QString& section, const QString& key, co
         if (trimmed.startsWith(u'[') && trimmed.endsWith(u']')) {
             if (inTargetSection && !keyFound) {
                 // We were in the section but key wasn't found — insert before this new section
-                lines.insert(i, key + u" = " + value);
+                lines.insert(i, key + QStringLiteral(" = ") + value);
                 keyFound = true;
                 break;
             }
@@ -422,7 +422,7 @@ void ConfigManager::setAndPersist(const QString& section, const QString& key, co
             }();
 
             const QString trailingComment = commentPos >= 0
-                ? u"   " + afterEq.mid(commentPos).trimmed()
+                ? QStringLiteral("   ") + afterEq.mid(commentPos).trimmed()
                 : QString{};
 
             // Reconstruct: preserve leading whitespace from original key
@@ -432,7 +432,7 @@ void ConfigManager::setAndPersist(const QString& section, const QString& key, co
                 return 0;
             }();
             const QString indent = lines[i].left(leadingSpaces);
-            lines[i] = indent + key + u" = " + value + trailingComment;
+            lines[i] = indent + key + QStringLiteral(" = ") + value + trailingComment;
             keyFound = true;
             break;
         }
@@ -441,13 +441,13 @@ void ConfigManager::setAndPersist(const QString& section, const QString& key, co
     // Key not found and we were in section at end of file
     if (!keyFound) {
         if (inTargetSection) {
-            lines.append(key + u" = " + value);
+            lines.append(key + QStringLiteral(" = ") + value);
         } else {
             // Section itself not found — append section + key
             if (!lines.isEmpty() && !lines.last().trimmed().isEmpty())
                 lines.append(QString{});
-            lines.append(u'[' + section + u']');
-            lines.append(key + u" = " + value);
+            lines.append(QStringLiteral("[") + section + QStringLiteral("]"));
+            lines.append(key + QStringLiteral(" = ") + value);
         }
     }
 

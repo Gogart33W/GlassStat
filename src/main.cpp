@@ -43,8 +43,9 @@ int main(int argc, char* argv[]) {
     }();
 
     // ── Config (must be first — everything else reads from it) ───────────────
-    auto* cfg = new gs::ConfigManager(gs::ConfigManager::findConfigPath(), &app);
-    cfg->setAutoScale(autoScale);  // available before next hot-reload, applied on first load
+    auto* cfg = new gs::ConfigManager(gs::ConfigManager::findConfigPath(), autoScale, &app);
+    // ↑ autoScale is now in m_autoScale *before* the constructor's load() runs,
+    // so the very first applyData() uses the real DPI default on a fresh install.
 
     qmlRegisterSingletonInstance<gs::ConfigManager>("GlassStat", 1, 0, "ConfigManager", cfg);
 
