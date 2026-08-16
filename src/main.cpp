@@ -6,11 +6,14 @@
 
 #include <QApplication>
 #include <QDir>
+#include <QGuiApplication>
 #include <QIcon>
 #include <QLockFile>
 #include <QQmlApplicationEngine>
+#include <QScreen>
 #include <QStandardPaths>
 #include <QtQml>
+#include <algorithm>
 #include <iostream>
 
 int main(int argc, char* argv[]) {
@@ -30,8 +33,19 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
+    // ── DPI-aware default scale (computed before ConfigManager loads from file)
+    const double autoScale = [&]() -> double {
+        if (const QScreen* s = QGuiApplication::primaryScreen()) {
+            const double dpi = s->logicalDotsPerInch();
+            return std::clamp(dpi / 96.0, 0.6, 2.5);
+        }
+        return 1.0;
+    }();
+
     // ── Config (must be first — everything else reads from it) ───────────────
     auto* cfg = new gs::ConfigManager(gs::ConfigManager::findConfigPath(), &app);
+    cfg->setAutoScale(autoScale);  // available before next hot-reload, applied on first load
+
     qmlRegisterSingletonInstance<gs::ConfigManager>("GlassStat", 1, 0, "ConfigManager", cfg);
 
     // ── System Monitor ────────────────────────────────────────────────────────

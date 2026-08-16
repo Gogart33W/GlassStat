@@ -1,13 +1,19 @@
 #include "config/ConfigManager.hpp"
 
 #include <QColor>
+#include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QGuiApplication>
+#include <QSaveFile>
 #include <QStandardPaths>
 #include <QTextStream>
 #include <iostream>
+#include <algorithm>
 
 namespace gs {
+
+// ── Constructor ──────────────────────────────────────────────────────────────
 
 ConfigManager::ConfigManager(const QString& path, QObject* parent)
     : QObject(parent), m_configPath(path)
@@ -25,6 +31,8 @@ ConfigManager::ConfigManager(const QString& path, QObject* parent)
     connect(&m_watcher, &QFileSystemWatcher::fileChanged,
             this, &ConfigManager::onFileChanged);
 }
+
+// ── Config Path Discovery ────────────────────────────────────────────────────
 
 QString ConfigManager::findConfigPath() {
     const auto exists = [](const QString& p) -> QString {
@@ -47,8 +55,26 @@ QString ConfigManager::findConfigPath() {
     return {};
 }
 
+QString ConfigManager::ensureUserConfigPath() {
+    const QString userPath = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)
+                           + QStringLiteral("/glassstat/config.toml");
+    if (QFile::exists(userPath)) return userPath;
+
+    // Create from default config
+    QDir().mkpath(QFileInfo(userPath).absolutePath());
+    for (const char* rel : {"config/default_config.toml", "../config/default_config.toml"}) {
+        const QString src = QLatin1String(rel);
+        if (QFile::exists(src)) {
+            QFile::copy(src, userPath);
+            break;
+        }
+    }
+    return userPath;
+}
+
+// ── File Watcher Slots ───────────────────────────────────────────────────────
+
 void ConfigManager::onFileChanged(const QString& /*path*/) {
-    // 250ms debounce to handle multi-write / atomic-write file save events
     m_debounceTimer.start(250);
 }
 
@@ -63,6 +89,8 @@ void ConfigManager::processFileReload() {
     emit configChanged();
 }
 
+// ── File Loading ─────────────────────────────────────────────────────────────
+
 void ConfigManager::load(const QString& path) {
     QFile f(path);
     if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -74,20 +102,22 @@ void ConfigManager::load(const QString& path) {
     QTextStream in(&f);
     const QString content = in.readAll();
     if (content.trimmed().isEmpty()) {
-        std::cerr << "[ConfigManager] Error: Config file is empty or missing content at "
+        std::cerr << "[ConfigManager] Error: Config file is empty at "
                   << path.toStdString() << " (retaining current valid configuration)\n";
         return;
     }
 
     const auto dataOpt = parseToml(content);
     if (!dataOpt.has_value()) {
-        std::cerr << "[ConfigManager] Error: TOML syntax validation failed for "
+        std::cerr << "[ConfigManager] Error: TOML syntax error in "
                   << path.toStdString() << " (retaining current valid configuration)\n";
         return;
     }
 
     applyData(dataOpt.value());
 }
+
+// ── TOML Parser ──────────────────────────────────────────────────────────────
 
 std::optional<ConfigManager::TomlData> ConfigManager::parseToml(const QString& content) {
     TomlData data;
@@ -97,7 +127,6 @@ std::optional<ConfigManager::TomlData> ConfigManager::parseToml(const QString& c
     for (const QString& rawLine : content.split(u'\n')) {
         lineNumber++;
 
-        // Strip comments
         QString line;
         bool inStr = false;
         for (const QChar ch : rawLine) {
@@ -111,12 +140,11 @@ std::optional<ConfigManager::TomlData> ConfigManager::parseToml(const QString& c
         line = line.trimmed();
         if (line.isEmpty()) continue;
 
-        // [section]
         if (line.startsWith(u'[') && line.endsWith(u']')) {
             section = line.mid(1, line.size() - 2).trimmed().toStdString();
             if (section.empty()) {
                 std::cerr << "[ConfigManager] Syntax Error line " << lineNumber
-                          << ": Empty section header bracket\n";
+                          << ": Empty section header\n";
                 return std::nullopt;
             }
             continue;
@@ -124,27 +152,25 @@ std::optional<ConfigManager::TomlData> ConfigManager::parseToml(const QString& c
 
         if (line.startsWith(u'[') && !line.endsWith(u']')) {
             std::cerr << "[ConfigManager] Syntax Error line " << lineNumber
-                      << ": Malformed section header (missing ']'): " << line.toStdString() << "\n";
+                      << ": Malformed section header: " << line.toStdString() << "\n";
             return std::nullopt;
         }
 
         const int eq = line.indexOf(u'=');
         if (eq < 0) {
             std::cerr << "[ConfigManager] Syntax Error line " << lineNumber
-                      << ": Expected key = value assignment: " << line.toStdString() << "\n";
+                      << ": Expected key = value: " << line.toStdString() << "\n";
             return std::nullopt;
         }
 
         const std::string key = line.left(eq).trimmed().toStdString();
         if (key.empty()) {
             std::cerr << "[ConfigManager] Syntax Error line " << lineNumber
-                      << ": Empty key name before '=': " << line.toStdString() << "\n";
+                      << ": Empty key: " << line.toStdString() << "\n";
             return std::nullopt;
         }
 
         QString val = line.mid(eq + 1).trimmed();
-
-        // Unquote strings
         if (val.size() >= 2 && val.startsWith(u'"') && val.endsWith(u'"')) {
             val = val.mid(1, val.size() - 2);
         }
@@ -154,6 +180,8 @@ std::optional<ConfigManager::TomlData> ConfigManager::parseToml(const QString& c
 
     return data;
 }
+
+// ── Data Application ─────────────────────────────────────────────────────────
 
 void ConfigManager::applyData(const TomlData& d) {
     auto get = [&](const char* sec, const char* key) -> std::optional<std::string> {
@@ -171,7 +199,13 @@ void ConfigManager::applyData(const TomlData& d) {
     }
     if (auto v = get("ui", "scale")) {
         const double sc = QString::fromStdString(*v).toDouble(&ok);
-        if (ok && sc >= 0.6 && sc <= 2.5) m_uiScale = sc;
+        if (ok && sc >= 0.6 && sc <= 2.5) {
+            m_uiScale = sc;
+            m_scaleSetByFile = true;
+        }
+    } else if (!m_scaleSetByFile) {
+        // No explicit scale in file — use DPI-based auto default
+        m_uiScale = m_autoScale;
     }
     if (auto v = get("ui", "font_family"))
         m_fontFamily = QString::fromStdString(*v);
@@ -183,22 +217,18 @@ void ConfigManager::applyData(const TomlData& d) {
 
     // Window Mode from file hot-reload (fromUser = false)
     if (auto v = get("window", "mode")) {
-        const QString modeStr = QString::fromStdString(*v).toLower().trimmed();
-        setWindowModeInternal(modeStr, false);
+        setWindowModeInternal(QString::fromStdString(*v).toLower().trimmed(), false);
     }
-
-    // Click Through from file hot-reload (fromUser = false)
     if (auto v = get("window", "click_through")) {
-        const std::string s = *v;
-        const bool ct = (s == "true" || s == "1");
-        setClickThroughInternal(ct, false);
+        const std::string& s = *v;
+        setClickThroughInternal(s == "true" || s == "1", false);
     }
 
-    // Validate color strings before applying
+    // Colors
     auto applyColor = [&](const char* key, QString& dst) {
         if (auto v = get("colors", key)) {
             const QString s = QString::fromStdString(*v);
-            if (QColor(s).isValid()) dst = s;
+            if (QColor::isValidColorName(s)) dst = s;
         }
     };
     applyColor("background", m_bgColor);
@@ -206,7 +236,7 @@ void ConfigManager::applyData(const TomlData& d) {
     applyColor("text",       m_textColor);
     applyColor("graph_line", m_graphColor);
 
-    // Scripts: each key = "command" pair becomes a runnable script entry
+    // Scripts
     m_scriptDefs.clear();
     auto sit = d.find("scripts");
     if (sit != d.end()) {
@@ -219,6 +249,31 @@ void ConfigManager::applyData(const TomlData& d) {
         }
     }
 }
+
+// ── Live In-Memory Setters (Settings GUI) ────────────────────────────────────
+
+void ConfigManager::setUiOpacity(double opacity) {
+    const double clamped = std::clamp(opacity, 0.1, 1.0);
+    if (qFuzzyCompare(m_opacity, clamped)) return;
+    m_opacity = clamped;
+    emit configChanged();
+}
+
+void ConfigManager::setUiScale(double scale) {
+    const double clamped = std::clamp(scale, 0.6, 2.5);
+    if (qFuzzyCompare(m_uiScale, clamped)) return;
+    m_uiScale = clamped;
+    emit configChanged();
+}
+
+void ConfigManager::setAccentColor(const QString& color) {
+    if (m_accentColor == color) return;
+    if (!QColor::isValidColorName(color)) return;
+    m_accentColor = color;
+    emit configChanged();
+}
+
+// ── Window Mode Setters ──────────────────────────────────────────────────────
 
 void ConfigManager::setWindowMode(const QString& rawMode) {
     setWindowModeInternal(rawMode, true);
@@ -244,9 +299,7 @@ void ConfigManager::setWindowModeInternal(const QString& rawMode, bool fromUser)
     if (m_windowMode != targetMode) {
         m_windowMode = targetMode;
         emit windowModeChanged(m_windowMode);
-        if (fromUser) {
-            emit windowModeChangedByUser(m_windowMode);
-        }
+        if (fromUser) emit windowModeChangedByUser(m_windowMode);
     }
 }
 
@@ -254,11 +307,168 @@ void ConfigManager::setClickThroughInternal(bool enabled, bool fromUser) {
     if (m_clickThrough != enabled) {
         m_clickThrough = enabled;
         emit clickThroughChanged(m_clickThrough);
-        if (fromUser) {
-            emit clickThroughChangedByUser(m_clickThrough);
-        }
+        if (fromUser) emit clickThroughChangedByUser(m_clickThrough);
     }
 }
+
+// ── Autostart ────────────────────────────────────────────────────────────────
+
+bool ConfigManager::autostartEnabled() const {
+    const QString path = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)
+                       + QStringLiteral("/autostart/glassstat.desktop");
+    return QFile::exists(path);
+}
+
+void ConfigManager::setAutostartEnabled(bool enabled) {
+    const QString autostartPath = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)
+                                + QStringLiteral("/autostart/glassstat.desktop");
+    if (enabled) {
+        if (QFile::exists(autostartPath)) { emit autostartChanged(true); return; }
+        QDir().mkpath(QFileInfo(autostartPath).absolutePath());
+
+        // Find source .desktop
+        QString src;
+        for (const char* p : {"packaging/glassstat.desktop",
+                               "../packaging/glassstat.desktop",
+                               "/usr/share/applications/glassstat.desktop"}) {
+            if (QFile::exists(QLatin1String(p))) { src = QLatin1String(p); break; }
+        }
+        if (src.isEmpty()) {
+            // Write a minimal fallback
+            QFile f(autostartPath);
+            if (f.open(QIODevice::WriteOnly | QIODevice::Text)) {
+                QTextStream s(&f);
+                s << "[Desktop Entry]\n"
+                  << "Type=Application\n"
+                  << "Name=GlassStat\n"
+                  << "Exec=glassstat\n"
+                  << "Icon=glassstat\n"
+                  << "X-GNOME-Autostart-enabled=true\n"
+                  << "Comment=System Monitor Desktop Widget\n";
+            }
+        } else {
+            QFile::copy(src, autostartPath);
+            // Append autostart key if not present
+            QFile f(autostartPath);
+            if (f.open(QIODevice::ReadWrite | QIODevice::Text)) {
+                QString content = QString::fromUtf8(f.readAll());
+                if (!content.contains(QStringLiteral("X-GNOME-Autostart-enabled"))) {
+                    f.seek(f.size());
+                    QTextStream s(&f);
+                    s << "X-GNOME-Autostart-enabled=true\n";
+                }
+            }
+        }
+        emit autostartChanged(true);
+    } else {
+        QFile::remove(autostartPath);
+        emit autostartChanged(false);
+    }
+}
+
+// ── Surgical File Writer ─────────────────────────────────────────────────────
+
+void ConfigManager::setAndPersist(const QString& section, const QString& key, const QString& value) {
+    const QString targetPath = ensureUserConfigPath();
+    if (targetPath.isEmpty()) {
+        std::cerr << "[ConfigManager] setAndPersist: cannot determine user config path\n";
+        return;
+    }
+
+    QFile f(targetPath);
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        std::cerr << "[ConfigManager] setAndPersist: cannot open " << targetPath.toStdString() << "\n";
+        return;
+    }
+    QStringList lines = QString::fromUtf8(f.readAll()).split(u'\n');
+    f.close();
+
+    const QString sectionHeader = u'[' + section + u']';
+    const QString keyPrefix = key + u'=';
+    const QString keyPrefixSpace = key + u" =";
+
+    bool inTargetSection = false;
+    bool keyFound = false;
+
+    for (int i = 0; i < lines.size(); ++i) {
+        const QString trimmed = lines[i].trimmed();
+
+        // Detect section headers
+        if (trimmed.startsWith(u'[') && trimmed.endsWith(u']')) {
+            if (inTargetSection && !keyFound) {
+                // We were in the section but key wasn't found — insert before this new section
+                lines.insert(i, key + u" = " + value);
+                keyFound = true;
+                break;
+            }
+            inTargetSection = (trimmed.mid(1, trimmed.size() - 2).trimmed() == section);
+            continue;
+        }
+
+        if (!inTargetSection) continue;
+
+        // Match "key = ..." or "key=..." (with optional trailing comment)
+        if (trimmed.startsWith(keyPrefix) || trimmed.startsWith(keyPrefixSpace)) {
+            // Preserve any trailing inline comment
+            const int eqPos = lines[i].indexOf(u'=');
+            const QString afterEq = lines[i].mid(eqPos + 1);
+            const int commentPos = [&]() -> int {
+                bool inS = false;
+                for (int j = 0; j < afterEq.size(); ++j) {
+                    if (afterEq[j] == u'"') inS = !inS;
+                    if (!inS && afterEq[j] == u'#') return j;
+                }
+                return -1;
+            }();
+
+            const QString trailingComment = commentPos >= 0
+                ? u"   " + afterEq.mid(commentPos).trimmed()
+                : QString{};
+
+            // Reconstruct: preserve leading whitespace from original key
+            const int leadingSpaces = [&]() -> int {
+                for (int j = 0; j < lines[i].size(); ++j)
+                    if (lines[i][j] != u' ' && lines[i][j] != u'\t') return j;
+                return 0;
+            }();
+            const QString indent = lines[i].left(leadingSpaces);
+            lines[i] = indent + key + u" = " + value + trailingComment;
+            keyFound = true;
+            break;
+        }
+    }
+
+    // Key not found and we were in section at end of file
+    if (!keyFound) {
+        if (inTargetSection) {
+            lines.append(key + u" = " + value);
+        } else {
+            // Section itself not found — append section + key
+            if (!lines.isEmpty() && !lines.last().trimmed().isEmpty())
+                lines.append(QString{});
+            lines.append(u'[' + section + u']');
+            lines.append(key + u" = " + value);
+        }
+    }
+
+    // Write back via QSaveFile (atomic)
+    QSaveFile sf(targetPath);
+    if (!sf.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        std::cerr << "[ConfigManager] setAndPersist: cannot open for writing " << targetPath.toStdString() << "\n";
+        return;
+    }
+    QTextStream out(&sf);
+    out << lines.join(u'\n');
+    sf.commit();
+
+    // If we're not watching the user path yet, add it
+    if (!m_watcher.files().contains(targetPath)) {
+        m_watcher.addPath(targetPath);
+        m_configPath = targetPath;
+    }
+}
+
+// ── Preset Themes ────────────────────────────────────────────────────────────
 
 void ConfigManager::setPreset(const QString& name) {
     if (name == QStringLiteral("dark")) {

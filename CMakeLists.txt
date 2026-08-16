@@ -8,7 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ── Qt6 & XCB Dependencies ───────────────────────────────────────────────────
-find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Quick Qml Widgets Svg)
+find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Quick Qml Widgets Svg QuickControls2)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(XCB REQUIRED xcb xcb-shape)
 
@@ -47,6 +47,7 @@ qt_add_qml_module(glassstat
     QML_FILES
         src/ui/Main.qml
         src/ui/SparklineCanvas.qml
+        src/ui/SettingsWindow.qml
 )
 
 target_include_directories(glassstat PRIVATE src ${XCB_INCLUDE_DIRS})
@@ -58,6 +59,7 @@ target_link_libraries(glassstat PRIVATE
     Qt6::Qml
     Qt6::Widgets
     Qt6::Svg
+    Qt6::QuickControls2
     ${XCB_LIBRARIES}
 )
 

@@ -15,10 +15,10 @@ namespace gs {
 class ConfigManager : public QObject {
     Q_OBJECT
 
-    Q_PROPERTY(double       uiOpacity      READ uiOpacity      NOTIFY configChanged)
-    Q_PROPERTY(double       uiScale        READ uiScale        NOTIFY configChanged)
+    Q_PROPERTY(double       uiOpacity      READ uiOpacity      WRITE setUiOpacity      NOTIFY configChanged)
+    Q_PROPERTY(double       uiScale        READ uiScale        WRITE setUiScale        NOTIFY configChanged)
     Q_PROPERTY(QString      bgColor        READ bgColor        NOTIFY configChanged)
-    Q_PROPERTY(QString      accentColor    READ accentColor    NOTIFY configChanged)
+    Q_PROPERTY(QString      accentColor    READ accentColor    WRITE setAccentColor    NOTIFY configChanged)
     Q_PROPERTY(QString      textColor      READ textColor      NOTIFY configChanged)
     Q_PROPERTY(QString      graphColor     READ graphColor     NOTIFY configChanged)
     Q_PROPERTY(QString      fontFamily     READ fontFamily     NOTIFY configChanged)
@@ -30,27 +30,47 @@ class ConfigManager : public QObject {
     Q_PROPERTY(bool    clickThrough READ clickThrough WRITE setClickThrough NOTIFY clickThroughChanged)
     Q_PROPERTY(bool    isX11        READ isX11        CONSTANT)
 
+    // ── Autostart ─────────────────────────────────────────────────────────────
+    Q_PROPERTY(bool autostartEnabled READ autostartEnabled WRITE setAutostartEnabled NOTIFY autostartChanged)
+
 public:
     explicit ConfigManager(const QString& path, QObject* parent = nullptr);
 
-    double       uiOpacity()      const noexcept { return m_opacity;      }
-    double       uiScale()        const noexcept { return m_uiScale;      }
-    QString      bgColor()        const          { return m_bgColor;      }
-    QString      accentColor()    const          { return m_accentColor;  }
-    QString      textColor()      const          { return m_textColor;    }
-    QString      graphColor()     const          { return m_graphColor;   }
-    QString      fontFamily()     const          { return m_fontFamily;   }
-    int          pollIntervalMs() const noexcept { return m_pollMs;       }
-    QVariantList scriptDefs()     const          { return m_scriptDefs;   }
-    QString      windowMode()     const          { return m_windowMode;   }
-    bool         clickThrough()   const noexcept { return m_clickThrough; }
-    bool         isX11()          const noexcept { return m_isX11;        }
+    double       uiOpacity()        const noexcept { return m_opacity;         }
+    double       uiScale()          const noexcept { return m_uiScale;         }
+    QString      bgColor()          const          { return m_bgColor;         }
+    QString      accentColor()      const          { return m_accentColor;     }
+    QString      textColor()        const          { return m_textColor;       }
+    QString      graphColor()       const          { return m_graphColor;      }
+    QString      fontFamily()       const          { return m_fontFamily;      }
+    int          pollIntervalMs()   const noexcept { return m_pollMs;          }
+    QVariantList scriptDefs()       const          { return m_scriptDefs;      }
+    QString      windowMode()       const          { return m_windowMode;      }
+    bool         clickThrough()     const noexcept { return m_clickThrough;    }
+    bool         isX11()            const noexcept { return m_isX11;           }
+    bool         autostartEnabled() const;
 
+    // Live setters for Settings GUI (in-memory only, no file write)
+    Q_INVOKABLE void setUiOpacity(double opacity);
+    Q_INVOKABLE void setUiScale(double scale);
+    Q_INVOKABLE void setAccentColor(const QString& color);
+
+    // Tray-driven / user-driven setters (emit *ByUser signals for persistence)
     Q_INVOKABLE void setWindowMode(const QString& mode);
     Q_INVOKABLE void setClickThrough(bool enabled);
+    Q_INVOKABLE void setAutostartEnabled(bool enabled);
     Q_INVOKABLE void setPreset(const QString& name);
 
+    // Surgical file writer — preserves comments, only touches target key
+    Q_INVOKABLE void setAndPersist(const QString& section, const QString& key, const QString& value);
+
+    // Ensure user config file exists (creates from default if needed)
+    Q_INVOKABLE QString ensureUserConfigPath();
+
     [[nodiscard]] static QString findConfigPath();
+
+    // Called from main() after screen info available — sets DPI-based default
+    void setAutoScale(double dpiAutoScale) { m_autoScale = dpiAutoScale; }
 
 signals:
     void configChanged();
@@ -58,6 +78,7 @@ signals:
     void clickThroughChanged(bool enabled);
     void windowModeChangedByUser(const QString& mode);
     void clickThroughChangedByUser(bool enabled);
+    void autostartChanged(bool enabled);
 
 private slots:
     void onFileChanged(const QString& path);
@@ -75,6 +96,9 @@ private:
     QFileSystemWatcher m_watcher;
     QTimer             m_debounceTimer;
     QString            m_configPath;
+
+    double       m_autoScale    = 1.0;   // DPI-based default set before first load
+    bool         m_scaleSetByFile = false; // true once file has an explicit scale key
 
     double       m_opacity      = 0.85;
     double       m_uiScale      = 1.0;

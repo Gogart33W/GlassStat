@@ -69,6 +69,11 @@ void TrayController::createTrayIcon() {
 
     m_trayMenu->addSeparator();
 
+    // Preferences
+    m_preferencesAction = m_trayMenu->addAction(QStringLiteral("Preferences…"), this, &TrayController::preferencesRequested);
+
+    m_trayMenu->addSeparator();
+
     // Window Mode Submenu
     QMenu* modeMenu = m_trayMenu->addMenu(QStringLiteral("Window Mode"));
     m_modeActionGroup = new QActionGroup(this);

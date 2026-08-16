@@ -37,6 +37,7 @@ public slots:
 signals:
     void lockedChanged(bool locked);
     void widgetVisibleChanged(bool visible);
+    void preferencesRequested();
 
 private:
     void createTrayIcon();
@@ -50,6 +51,7 @@ private:
 
     QAction*          m_showHideAction     = nullptr;
     QAction*          m_lockAction         = nullptr;
+    QAction*          m_preferencesAction  = nullptr;
     QAction*          m_modeDesktopAction  = nullptr;
     QAction*          m_modeFloatingAction = nullptr;
     QAction*          m_modeTopAction      = nullptr;

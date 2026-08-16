@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import QtCore
 import GlassStat 1.0
@@ -52,6 +53,22 @@ Window {
         if (appSettings.savedMode !== "") {
             ConfigManager.setWindowMode(appSettings.savedMode)
             ConfigManager.setClickThrough(appSettings.savedClickThrough)
+        }
+    }
+
+    // ── Settings Window ───────────────────────────────────────────────────────
+    SettingsWindow {
+        id: settingsWin
+        visible: false
+        onVisibleChanged: if (visible) settingsWin.captureSnapshot()
+    }
+
+    Connections {
+        target: TrayController
+        function onPreferencesRequested() {
+            settingsWin.show()
+            settingsWin.raise()
+            settingsWin.requestActivate()
         }
     }
 
