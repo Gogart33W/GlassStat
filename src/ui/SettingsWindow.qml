@@ -55,7 +55,7 @@ Window {
         RowLayout {
             anchors { fill: parent; leftMargin: 18; rightMargin: 12 }
             Text {
-                text: "⚙  Preferences"
+                text: "⚙  Preferences  ·  v" + ConfigManager.appVersion
                 font { pixelSize: 14; weight: Font.Medium }
                 color: "#e2e8f0"
                 Layout.fillWidth: true

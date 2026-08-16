@@ -3,6 +3,7 @@
 #include "scripts/ScriptRunner.hpp"
 #include "ui/TrayController.hpp"
 #include "ui/WindowManager.hpp"
+#include "version.hpp"
 
 #include <QApplication>
 #include <QDir>
@@ -22,6 +23,8 @@ int main(int argc, char* argv[]) {
     app.setApplicationName("GlassStat");
     app.setApplicationVersion("0.1.0");
     app.setWindowIcon(QIcon(QStringLiteral(":/icons/glassstat.svg")));
+    std::cerr << "[GlassStat] version " << GLASSSTAT_VERSION_STRING
+              << " (" << GLASSSTAT_GIT_HASH << ")\n";
 
     // ── Single-instance guard ─────────────────────────────────────────────────
     const QString lockDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);

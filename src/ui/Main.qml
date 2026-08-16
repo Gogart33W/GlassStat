@@ -163,6 +163,16 @@ Window {
                     }
                     color: ConfigManager.accentColor
                 }
+                Text {
+                    text: "v" + ConfigManager.appVersion
+                    font {
+                        family:    ConfigManager.fontFamily + ", monospace"
+                        pixelSize: Math.round(7 * ConfigManager.uiScale)
+                    }
+                    color: "#4a5568"
+                    bottomPadding: 1
+                    verticalAlignment: Text.AlignBottom
+                }
                 Item { Layout.fillWidth: true }
 
                 // Mini Mode Toggle Button

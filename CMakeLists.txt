@@ -7,6 +7,40 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# ── Git-based auto-version ────────────────────────────────────────────────────
+find_package(Git QUIET)
+if(Git_FOUND)
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} rev-list --count HEAD
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        OUTPUT_VARIABLE GLASSSTAT_BUILD_NUMBER
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        OUTPUT_VARIABLE GLASSSTAT_GIT_HASH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+endif()
+if(NOT GLASSSTAT_BUILD_NUMBER OR GLASSSTAT_BUILD_NUMBER STREQUAL "")
+    set(GLASSSTAT_BUILD_NUMBER "0")
+endif()
+if(NOT GLASSSTAT_GIT_HASH OR GLASSSTAT_GIT_HASH STREQUAL "")
+    set(GLASSSTAT_GIT_HASH "unknown")
+endif()
+set(GLASSSTAT_VERSION_BASE "1.0.0")
+set(GLASSSTAT_VERSION_FULL "${GLASSSTAT_VERSION_BASE}.${GLASSSTAT_BUILD_NUMBER}")
+message(STATUS "GlassStat version: ${GLASSSTAT_VERSION_FULL} (${GLASSSTAT_GIT_HASH})")
+
+configure_file(
+    ${CMAKE_SOURCE_DIR}/src/version.hpp.in
+    ${CMAKE_BINARY_DIR}/generated/version.hpp
+    @ONLY
+)
+
 # ── Qt6 & XCB Dependencies ───────────────────────────────────────────────────
 find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Quick Qml Widgets Svg QuickControls2)
 find_package(PkgConfig REQUIRED)
@@ -50,7 +84,7 @@ qt_add_qml_module(glassstat
         src/ui/SettingsWindow.qml
 )
 
-target_include_directories(glassstat PRIVATE src ${XCB_INCLUDE_DIRS})
+target_include_directories(glassstat PRIVATE src ${XCB_INCLUDE_DIRS} ${CMAKE_BINARY_DIR}/generated)
 
 target_link_libraries(glassstat PRIVATE
     Qt6::Core

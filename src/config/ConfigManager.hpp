@@ -33,6 +33,9 @@ class ConfigManager : public QObject {
     // ── Autostart ─────────────────────────────────────────────────────────────
     Q_PROPERTY(bool autostartEnabled READ autostartEnabled WRITE setAutostartEnabled NOTIFY autostartChanged)
 
+    // ── Version (read-only, baked in at compile time) ─────────────────────────────
+    Q_PROPERTY(QString appVersion READ appVersion CONSTANT)
+
 public:
     explicit ConfigManager(const QString& path, double autoScale = 1.0, QObject* parent = nullptr);
 
@@ -49,6 +52,7 @@ public:
     bool         clickThrough()     const noexcept { return m_clickThrough;    }
     bool         isX11()            const noexcept { return m_isX11;           }
     bool         autostartEnabled() const;
+    QString      appVersion()        const;
 
     // Live setters for Settings GUI (in-memory only, no file write)
     Q_INVOKABLE void setUiOpacity(double opacity);

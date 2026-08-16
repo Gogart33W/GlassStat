@@ -1,4 +1,5 @@
 #include "config/ConfigManager.hpp"
+#include "version.hpp"
 
 #include <QColor>
 #include <QDir>
@@ -319,6 +320,12 @@ bool ConfigManager::autostartEnabled() const {
     return QFile::exists(path);
 }
 
+// ── Version ───────────────────────────────────────────────────────────────────
+QString ConfigManager::appVersion() const {
+    return QStringLiteral(GLASSSTAT_VERSION_STRING);
+}
+
+// ── Autostart ───────────────────────────────────────────────────────────────────
 void ConfigManager::setAutostartEnabled(bool enabled) {
     const QString autostartPath = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)
                                 + QStringLiteral("/autostart/glassstat.desktop");
